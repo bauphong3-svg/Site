@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vòng Quay 100 Món</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 450px;
+            height: 450px;
+        }
+
+        /* Mũi tên chỉ hướng trúng thưởng */
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #ff4757;
+            z-index: 10;
+            filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.2));
+        }
+
+        /* Canvas vẽ vòng quay */
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 4s cubic-bezier(0.1, 0.8, 0.1, 1);
+        }
+
+        /* Nút bấm ở tâm */
+        .spin-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background-color: #fff;
+            border: 4px solid #ff4757;
+            border-radius: 50%;
+            color: #ff4757;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            user-select: none;
+            z-index: 5;
+        }
+
+        .spin-btn:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        /* Kết quả hiển thị */
+        #result {
+            margin-top: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2ed573;
+            min-height: 36px;
+            text-align: center;
+            padding: 10px 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Vòng Quay May Mắn 100 Món</h1>
+    
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="500" height="500"></canvas>
+        <button class="spin-btn" id="spinBtn">QUAY</button>
+    </div>
+
+    <div id="result">Nhấn QUAY để chọn món!</div>
+
+    <script>
+        // 1. Tạo danh sách 100 món (Bạn có thể đổi tên món ăn tùy ý ở đây)
+        const items = [];
+        for (let i = 1; i <= 100; i++) {
+            items.push(`Món ăn số ${i}`);
+        }
+
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const resultDisplay = document.getElementById('result');
+
+        const numSegments = items.length;
+        const arc = 2 * Math.PI / numSegments;
+        const radius = canvas.width / 2;
+
+        // Bảng màu xen kẽ để vòng quay trông sinh động
+        const colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F3", "#33FFF0"];
+
+        // 2. Vẽ vòng quay lên Canvas
+        function drawWheel() {
+            for (let i = 0; i < numSegments; i++) {
+                const angle = i * arc;
+                ctx.beginPath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.moveTo(radius, radius);
+                // Vẽ các nan quạt siêu nhỏ cho 100 món
+                ctx.arc(radius, radius, radius, angle, angle + arc);
+                ctx.lineTo(radius, radius);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
+
+        drawWheel();
+
+        // 3. Xử lý logic quay thưởng
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        spinBtn.addEventListener('click', () => {
+            if (isSpinning) return; // Không cho bấm khi đang quay
+            
+            isSpinning = true;
+            resultDisplay.innerText = "Đang chọn món...";
+            
+            // Tạo số vòng quay ngẫu nhiên (tối thiểu 5 vòng, tối đa 10 vòng) cộng thêm góc ngẫu nhiên
+            const randomDegrees = Math.floor(3000 + Math.random() * 3000);
+            currentRotation += randomDegrees;
+            
+            // Áp dụng hiệu ứng xoay bằng CSS
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            // Đợi 4 giây (khớp với thời gian transition CSS) để tính toán kết quả
+            setTimeout(() => {
+                isSpinning = false;
+                
+                // Tính toán góc dừng thực tế (đưa về khoảng 0 - 360 độ)
+                const actualDegrees = currentRotation % 360;
+                
+                // Đổi từ độ sang Radian và điều chỉnh hướng mũi tên (mũi tên ở đỉnh, tương ứng -90 độ hay 3*Math.PI/2)
+                // Trong hệ tọa độ canvas, góc 0 nằm ở bên phải (hướng 3 giờ)
+                const targetAngle = (3 * Math.PI / 2 - (actualDegrees * Math.PI / 180)) % (2 * Math.PI);
+                
+                // Chuẩn hóa góc để tránh số âm
+                const positiveAngle = targetAngle < 0 ? targetAngle + 2 * Math.PI : targetAngle;
+                
+                // Xác định index của món trúng thưởng
+                let selectedIndex = Math.floor(positiveAngle / arc);
+                
+                // Đảm bảo index nằm trong mảng hợp lệ
+                if(selectedIndex >= numSegments) selectedIndex = numSegments - 1;
+                if(selectedIndex < 0) selectedIndex = 0;
+
+                // Hiển thị kết quả ra màn hình
+                const chuoiKetQua = `Chúc mừng! Bạn đã trúng: ${items[selectedIndex]}`;
+                resultDisplay.innerText = chuoiKetQua;
+                
+                // Alert thông báo trực tiếp
+                alert(chuoiKetQua);
+            }, 4000);
+        });
+    </script>
+
+</body>
+</html>
